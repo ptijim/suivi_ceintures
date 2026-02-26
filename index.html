@@ -35,7 +35,6 @@ input {
 button {
     padding: 10px 18px;
     margin-top: 8px;
-    margin-right: 6px;
     border-radius: 6px;
     border: none;
     background-color: #2d89ef;
@@ -61,18 +60,18 @@ button:hover { background-color: #1b5fa7; }
     margin-top: 20px;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-
-table, th, td { border: 1px solid #ccc; }
-th, td { padding: 8px; text-align: center; }
-
 .success { color: green; font-weight: bold; }
 .error { color: red; font-weight: bold; }
 .info { font-weight: bold; color: #2d89ef; }
+
+.mission-ok {
+    color: green;
+    font-weight: bold;
+}
+
+.mission-nok {
+    color: #444;
+}
 </style>
 </head>
 
@@ -88,7 +87,6 @@ th, td { padding: 8px; text-align: center; }
     <button onclick="login()">Se connecter</button>
 </div>
 
-<!-- Zone élève -->
 <div id="eleveZone">
     <div class="info">Connecté en tant qu'élève</div>
     <button class="logout" onclick="logout()">Se déconnecter</button>
@@ -99,8 +97,10 @@ th, td { padding: 8px; text-align: center; }
         <input type="text" id="code">
         <button onclick="validerMission()">Valider</button>
         <p id="message"></p>
+    </div>
 
-        <h4>Missions validées :</h4>
+    <div class="section">
+        <h4>Progression</h4>
         <ul id="missionsList"></ul>
     </div>
 
@@ -112,7 +112,6 @@ th, td { padding: 8px; text-align: center; }
     </div>
 </div>
 
-<!-- Zone admin -->
 <div id="adminZone">
     <div class="info">Connecté en tant qu'administrateur</div>
     <button class="logout" onclick="logout()">Se déconnecter</button>
@@ -133,10 +132,10 @@ th, td { padding: 8px; text-align: center; }
 
 <script>
 
-// URL Apps Script fournie
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwT1FWzMtNWZgM6wsx0OSAM_grpE-4Br1yvGnq4yDJijpbzvNwY4lanyWuvGsMcR9pf/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYTM2ecwwa4cllbE4u_erfvUlcIZMT9tLR2tk9LBy2gKPGYIwO7YnveNW8cEvU-8Mo/exec";
 
 let currentId = "";
+let toutesMissions = [];
 
 function login() {
     const id = document.getElementById("id").value;
@@ -167,6 +166,8 @@ function login() {
             document.getElementById("eleveZone").style.display = "block";
             document.getElementById("welcome").innerText =
                 "Bienvenue " + data.prenom + " " + data.nom;
+
+            toutesMissions = data.toutesMissions || [];
             afficherMissions(data.missions || []);
         }
 
@@ -182,13 +183,21 @@ function logout(){
     document.getElementById("title").innerText = "Connexion";
 }
 
-function afficherMissions(missions){
+function afficherMissions(missionsValidees){
     const ul = document.getElementById("missionsList");
     ul.innerHTML = "";
 
-    missions.forEach(m => {
+    toutesMissions.forEach(mission => {
         const li = document.createElement("li");
-        li.textContent = m;
+
+        if(missionsValidees.includes(mission)){
+            li.className = "mission-ok";
+            li.textContent = "✔ " + mission;
+        } else {
+            li.className = "mission-nok";
+            li.textContent = mission;
+        }
+
         ul.appendChild(li);
     });
 }
