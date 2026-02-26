@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Suivi des missions</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f8;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.card {
+    background: white;
+    padding: 25px;
+    max-width: 720px;
+    margin: auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h2 { margin-bottom: 20px; }
+
+input {
+    width: 90%;
+    padding: 10px;
+    margin: 6px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 10px 18px;
+    margin-top: 8px;
+    margin-right: 6px;
+    border-radius: 6px;
+    border: none;
+    background-color: #2d89ef;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover { background-color: #1b5fa7; }
+
+.logout {
+    background-color: #d9534f;
+}
+
+.section {
+    margin-top: 18px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+
+#eleveZone, #adminZone {
+    display: none;
+    text-align: left;
+    margin-top: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+table, th, td { border: 1px solid #ccc; }
+th, td { padding: 8px; text-align: center; }
+
+.success { color: green; font-weight: bold; }
+.error { color: red; font-weight: bold; }
+.info { font-weight: bold; color: #2d89ef; }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2 id="title">Connexion</h2>
+
+<div id="loginZone">
+    <input type="text" id="id" placeholder="Identifiant"><br>
+    <input type="password" id="password" placeholder="Mot de passe"><br>
+    <button onclick="login()">Se connecter</button>
+</div>
+
+<!-- Zone élève -->
+<div id="eleveZone">
+    <div class="info">Connecté en tant qu'élève</div>
+    <button class="logout" onclick="logout()">Se déconnecter</button>
+    <h3 id="welcome"></h3>
+
+    <div class="section">
+        Code mission :<br>
+        <input type="text" id="code">
+        <button onclick="validerMission()">Valider</button>
+        <p id="message"></p>
+
+        <h4>Missions validées :</h4>
+        <ul id="missionsList"></ul>
+    </div>
+
+    <div class="section">
+        <h4>Changer le mot de passe</h4>
+        <input type="password" id="newPassword">
+        <button onclick="changerMotDePasse()">Modifier</button>
+        <p id="pwdMessage"></p>
+    </div>
+</div>
+
+<!-- Zone admin -->
+<div id="adminZone">
+    <div class="info">Connecté en tant qu'administrateur</div>
+    <button class="logout" onclick="logout()">Se déconnecter</button>
+
+    <table id="adminTable">
+        <thead>
+            <tr>
+                <th>Élève</th>
+                <th>Mission</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+</div>
+
+<script>
+
+// URL Apps Script fournie
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwT1FWzMtNWZgM6wsx0OSAM_grpE-4Br1yvGnq4yDJijpbzvNwY4lanyWuvGsMcR9pf/exec";
+
+let currentId = "";
+
+function login() {
+    const id = document.getElementById("id").value;
+    const password = document.getElementById("password").value;
+
+    fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: id === "admin" ? "all" : "login", id, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+
+        if(data.status !== "success"){
+            alert("Identifiants incorrects");
+            return;
+        }
+
+        currentId = id;
+        document.getElementById("loginZone").style.display = "none";
+
+        if(id === "admin"){
+            document.getElementById("title").innerText = "Espace Administrateur";
+            document.getElementById("adminZone").style.display = "block";
+            remplirTableAdmin(data.allMissions || []);
+        }
+        else{
+            document.getElementById("title").innerText = "Espace Élève";
+            document.getElementById("eleveZone").style.display = "block";
+            document.getElementById("welcome").innerText =
+                "Bienvenue " + data.prenom + " " + data.nom;
+            afficherMissions(data.missions || []);
+        }
+
+    })
+    .catch(() => alert("Erreur serveur"));
+}
+
+function logout(){
+    currentId = "";
+    document.getElementById("loginZone").style.display = "block";
+    document.getElementById("eleveZone").style.display = "none";
+    document.getElementById("adminZone").style.display = "none";
+    document.getElementById("title").innerText = "Connexion";
+}
+
+function afficherMissions(missions){
+    const ul = document.getElementById("missionsList");
+    ul.innerHTML = "";
+
+    missions.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = m;
+        ul.appendChild(li);
+    });
+}
+
+function validerMission(){
+    const code = document.getElementById("code").value.trim();
+
+    fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "mission", id: currentId, code })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const msg = document.getElementById("message");
+
+        if(data.status === "valide"){
+            msg.className = "success";
+            msg.innerText = "Mission validée : " + data.mission;
+            afficherMissions(data.missions || []);
+            document.getElementById("code").value = "";
+        }
+        else if(data.status === "deja"){
+            msg.className = "error";
+            msg.innerText = "Mission déjà validée";
+        }
+        else{
+            msg.className = "error";
+            msg.innerText = "Code invalide";
+        }
+    });
+}
+
+function changerMotDePasse(){
+    const newPassword = document.getElementById("newPassword").value;
+    const msg = document.getElementById("pwdMessage");
+
+    fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "changePassword", id: currentId, newPassword })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.status === "success"){
+            msg.className = "success";
+            msg.innerText = "Mot de passe modifié";
+        } else {
+            msg.className = "error";
+            msg.innerText = "Erreur lors de la modification";
+        }
+    });
+}
+
+function remplirTableAdmin(missions){
+    const tbody = document.querySelector("#adminTable tbody");
+    tbody.innerHTML = "";
+
+    missions.forEach(m => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${m.eleve}</td><td>${m.mission}</td><td>${m.date}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+</script>
+
+</body>
+</html>
